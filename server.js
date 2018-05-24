@@ -1,27 +1,36 @@
 // Dependencies
 var express = require("express");
-var mongojs = require("mongojs");
-// Require request and cheerio. This makes the scraping possible
+// var mongojs = require("mongojs");
 var request = require("request");
 var cheerio = require("cheerio");
+var mongoose = require("mongoose");
+var bodyParser = require("body-parser");
 
 // Initialize Express
 var app = express();
 
 // Database configuration
-var databaseUrl = "scraper";
-var collections = ["scrapedData"];
+// var databaseUrl = "scraper";
+// var collections = ["scrapedData"];
+
 
 app.use(express.static('public'));
 
 //mongoose connection
-mongoose.connect("mongodb://localhost/scrapin");
+
+var MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/scrapin";
+
+// Set mongoose to leverage built in JavaScript ES6 Promises
+// Connect to the Mongo DB
+mongoose.Promise = Promise;
+mongoose.connect(MONGODB_URI);
+var db = require('./models/index.js')
 
 // Hook mongojs configuration to the db variable
-var db = mongojs(databaseUrl, collections);
-db.on("error", function(error) {
-  console.log("Database Error:", error);
-});
+// var db = mongojs(databaseUrl, collections);
+// db.on("error", function(error) {
+//   console.log("Database Error:", error);
+// });
 
 // Main route (simple Hello World Message)
 app.get("/", function(req, res) {
@@ -31,7 +40,7 @@ app.get("/", function(req, res) {
 // Retrieve data from the db
 app.get("/all", function(req, res) {
   // Find all results from the scrapedData collection in the db
-  db.scrapedData.find({}, function(error, found) {
+  db.Article.find({}, function(error, found) {
     // Throw any errors to the console
     if (error) {
       console.log(error);
@@ -65,7 +74,7 @@ app.get("/scrape", function(req, res) {
 				.text();
   
 		//adds data to DB
-		  db.scrapedData.insert({
+		  db.Article.create({
 			title: title,
       link: link,
       summary: summary,
@@ -91,11 +100,9 @@ app.get("/scrape", function(req, res) {
 
 // Route for getting all Articles from the db
 app.get("/articles", function(req, res) {
-  // Grab every document in the Articles collection
   db.Article.find({})
-    .then(function(dbArticle) {
-      // If we were able to successfully find Articles, send them back to the client
-      res.json(dbArticle);
+    .then(function(scrapedData) {
+      res.json(scrapedData);
     })
     .catch(function(err) {
       // If an error occurred, send it to the client
